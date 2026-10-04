@@ -10,20 +10,24 @@ cd ~/ipa-push
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 cp .env.example .env
-# Sửa .env: đặt IPA_PUSH_BASE_URL=https://<domain-public-cua-ban>
+# Sửa .env: đặt IPA_PUSH_BASE_URL=https://ipa-push.banhtieuassistant.com
 #           và IPA_PUSH_TOKEN=<chuoi-ngau-nhien>
 nano .env   # hoặc dùng editor tùy ý
-# Chạy nền:
+# Chạy web app nền:
 nohup ./run-web.sh > ipa-push.log 2>&1 &
 # Kiểm tra:
 curl -s http://localhost:8765/ | head -c 100
 ```
 
-Mở tunnel để iPhone truy cập được (iOS bắt buộc HTTPS):
+Tunnel Cloudflare đã tạo sẵn (tên `ipa-push`, public URL
+`https://ipa-push.banhtieuassistant.com` → `localhost:8765`).
+Agent chỉ cần tunnel token (file riêng, Khiem sẽ đưa) rồi chạy:
 
 ```bash
-cloudflared tunnel --url http://localhost:8765
-# → lấy URL https://xxx.trycloudflare.com, điền vào IPA_PUSH_BASE_URL trong .env, restart server
+# lưu token vào ~/ipa-push/.tunnel-token (1 dòng, không commit)
+# rồi:
+nohup ./run-tunnel.sh > tunnel.log 2>&1 &
+# kiểm tra: https://ipa-push.banhtieuassistant.com/ phải mở được trang ipa-push
 ```
 
 Muốn chạy bền vững sau khi restart máy: tạo LaunchAgent `~/Library/LaunchAgents/dev.ipapush.plist`
