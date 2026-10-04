@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Runtime data (IPAs + metadata) — không commit
+data/ipas/*
+data/meta/*
+!.gitkeep
+
+# Secrets
+.env

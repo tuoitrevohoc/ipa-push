@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cài đặt {name} — ipa-push</title>
+<style>
+  body {{ font-family: -apple-system, system-ui, sans-serif; margin: 0; background: #0f1115; color: #e8eaf0;
+    display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 20px; }}
+  .card {{ background: #171a21; border: 1px solid #262b36; border-radius: 20px; padding: 32px 28px;
+    max-width: 380px; width: 100%; text-align: center; }}
+  img.icon {{ width: 96px; height: 96px; border-radius: 22px; background: #262b36; object-fit: cover; }}
+  h1 {{ font-size: 22px; margin: 14px 0 4px; }}
+  .ver {{ color: #9aa0b0; font-size: 14px; margin-bottom: 20px; }}
+  .install {{ display: block; background: #0a84ff; color: #fff; font-size: 18px; font-weight: 700;
+    border-radius: 14px; padding: 16px; text-decoration: none; margin-bottom: 14px; }}
+  .qr img {{ width: 170px; height: 170px; border-radius: 10px; background: #fff; padding: 6px; }}
+  .hint {{ color: #9aa0b0; font-size: 13px; margin-top: 14px; }}
+  .warn {{ color: #ffcf6e; font-size: 14px; background: #2b2415; border-radius: 10px; padding: 10px; }}
+</style>
+</head>
+<body>
+<div class="card">
+  {icon_block}
+  <h1>{name}</h1>
+  <div class="ver">v{version} ({build}) · {size}<br>{bundle}</div>
+  {hint}
+  <a class="install" href="{itms}">📲 Cài đặt</a>
+  <div class="qr"><img src="{qr}"></div>
+  <p class="hint">Bấm <b>Cài đặt</b> → iOS hỏi xác nhận → app xuất hiện ngoài màn hình chính.<br>
+  IPA phải được ký Ad Hoc/Enterprise và UDID máy đã đăng ký.</p>
+</div>
+</body>
+</html>

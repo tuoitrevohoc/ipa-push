@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ipa-push 📲</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, system-ui, sans-serif; margin: 0; background: #0f1115; color: #e8eaf0; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  .sub { color: #9aa0b0; margin-bottom: 24px; }
+  .card { background: #171a21; border: 1px solid #262b36; border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  input[type=text], input[type=password] { background: #0f1115; border: 1px solid #2c3240; color: #e8eaf0;
+    border-radius: 10px; padding: 10px 12px; font-size: 15px; }
+  input[type=file] { font-size: 14px; }
+  button, .btn { background: #0a84ff; color: #fff; border: 0; border-radius: 10px; padding: 10px 18px;
+    font-size: 15px; cursor: pointer; text-decoration: none; display: inline-block; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.ghost, .btn.ghost { background: #262b36; }
+  button.danger { background: #3a2226; color: #ff8a8a; }
+  .ipa { display: flex; gap: 14px; align-items: center; }
+  .ipa img.icon { width: 64px; height: 64px; border-radius: 14px; background: #262b36; object-fit: cover; }
+  .ipa .meta { flex: 1; min-width: 0; }
+  .ipa .meta .name { font-weight: 700; font-size: 17px; }
+  .ipa .meta .ver { color: #9aa0b0; font-size: 13px; margin-top: 2px; word-break: break-all; }
+  .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .actions a, .actions button { font-size: 14px; padding: 8px 14px; }
+  .qr { display: none; margin-top: 12px; }
+  .qr img { width: 180px; height: 180px; border-radius: 8px; background: #fff; padding: 6px; }
+  .hint { color: #9aa0b0; font-size: 13px; }
+  #status { margin-top: 10px; font-size: 14px; min-height: 20px; }
+  .err { color: #ff8a8a; } .ok { color: #7ddb8a; }
+  .tokenrow { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tokenrow input { flex: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📲 ipa-push</h1>
+  <div class="sub">Đẩy file .ipa lên đây → mở link trên iPhone để cài app.</div>
+
+  <div class="tokenrow">
+    <input type="password" id="token" placeholder="Token (IPA_PUSH_TOKEN)">
+    <button class="ghost" onclick="saveToken()">Lưu</button>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <input type="file" id="file" accept=".ipa">
+      <input type="text" id="name" placeholder="Tên hiển thị (tùy chọn)" style="flex:1; min-width:180px">
+      <button id="upBtn" onclick="upload()">Tải lên</button>
+    </div>
+    <div id="status"></div>
+    <p class="hint">IPA phải được ký <b>Ad Hoc</b> hoặc <b>Enterprise</b> (UDID của iPhone đã đăng ký trong Apple Developer) thì iOS mới cho cài qua web. Bản ký Development thì dùng nút “Cài trực tiếp” trên máy Mac.</p>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+function token() { return localStorage.getItem('ipa_token') || ''; }
+$('token').value = token();
+function saveToken() { localStorage.setItem('ipa_token', $('token').value.trim()); load(); }
+function setStatus(msg, cls) { $('status').innerHTML = `<span class="${cls||''}">${msg}</span>`; }
+function fmtSize(b) { return (b/1024/1024).toFixed(1) + ' MB'; }
+function fmtDate(ts) { return new Date(ts*1000).toLocaleString('vi-VN'); }
+
+async function load() {
+  const r = await fetch('/api/ipas?token=' + encodeURIComponent(token()));
+  if (r.status === 401) { $('list').innerHTML = '<p class="err">Sai token. Nhập token rồi bấm Lưu.</p>'; return; }
+  const items = await r.json();
+  $('list').innerHTML = items.length ? '' : '<p class="hint">Chưa có IPA nào. Tải file lên để bắt đầu.</p>';
+  for (const it of items) {
+    const el = document.createElement('div');
+    el.className = 'card';
+    el.innerHTML = `
+      <div class="ipa">
+        ${it.has_icon ? `<img class="icon" src="/icon/${it.id}.png">` : `<div class="icon" style="width:64px;height:64px;border-radius:14px"></div>`}
+        <div class="meta">
+          <div class="name">${escapeHtml(it.display_name)}</div>
+          <div class="ver">${escapeHtml(it.bundle_id)} · v${escapeHtml(it.version)} (${escapeHtml(it.build)}) · ${fmtSize(it.size)} · ${fmtDate(it.uploaded_at)}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="${it.itms_url}">📲 Cài đặt</a>
+        <a class="btn ghost" href="/i/${it.id}" target="_blank">Trang cài đặt</a>
+        <button class="ghost" onclick="toggleQr('${it.id}')">QR</button>
+        <button class="ghost" onclick="copyLink('${it.install_page}')">Copy link</button>
+        <button class="danger" onclick="delIpa('${it.id}')">Xóa</button>
+      </div>
+      <div class="qr" id="qr-${it.id}"><img src="${it.qr_url}"><p class="hint">Quét bằng camera iPhone → mở link itms-services để cài.</p></div>`;
+    $('list').appendChild(el);
+  }
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toggleQr(id) { const e = $('qr-'+id); e.style.display = e.style.display === 'block' ? 'none' : 'block'; }
+function copyLink(u) { navigator.clipboard.writeText(u); setStatus('Đã copy link ✓', 'ok'); }
+async function delIpa(id) {
+  if (!confirm('Xóa IPA này?')) return;
+  const r = await fetch('/api/ipas/' + id + '?token=' + encodeURIComponent(token()), {method: 'DELETE'});
+  if (r.ok) load(); else setStatus('Xóa thất bại', 'err');
+}
+async function upload() {
+  const f = $('file').files[0];
+  if (!f) { setStatus('Chọn file .ipa trước đã', 'err'); return; }
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('name', $('name').value);
+  fd.append('token', token());
+  $('upBtn').disabled = true;
+  setStatus('Đang tải lên…');
+  try {
+    const r = await fetch('/api/upload', {method: 'POST', body: fd});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'Upload thất bại');
+    setStatus('✓ Đã tải <b>' + escapeHtml(j.display_name) + '</b> — mở <b>' + escapeHtml(j.install_page) + '</b> trên iPhone để cài.', 'ok');
+    $('file').value = ''; $('name').value = '';
+    load();
+  } catch (e) { setStatus(e.message, 'err'); }
+  $('upBtn').disabled = false;
+}
+load();
+</script>
+</body>
+</html>
